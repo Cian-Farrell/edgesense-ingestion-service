@@ -15,19 +15,17 @@ public class SensorDataListener {
     private static final String ENDPOINT = "a3ukfj6l4dra4j-ats.iot.eu-west-1.amazonaws.com";
     private static final String CLIENT_ID = "edge-sense-ingestion-service";
     private static final String TOPIC = "edgesense/sensor-data";
-    private static final String CERT_PATH = "C:/Users/cianf/InternalPlacement/certs/86f52f8b5a613ca70021e08a299db7a2a110aeb70eef4239b4615a4ab88befd6-certificate.pem.crt";
-    private static final String KEY_PATH = "C:/Users/cianf/InternalPlacement/certs/86f52f8b5a613ca70021e08a299db7a2a110aeb70eef4239b4615a4ab88befd6-private.pem.key";
-    private static final String CA_PATH = "C:/Users/cianf/InternalPlacement/certs/AmazonRootCA1.pem";
+    private static final String CERT_PATH = "C:/Users/User/InternalPlacement/certs/86f52f8b5a613ca70021e08a299db7a2a110aeb70eef4239b4615a4ab88befd6-certificate.pem.crt";
+    private static final String KEY_PATH = "C:/Users/User/InternalPlacement/certs/86f52f8b5a613ca70021e08a299db7a2a110aeb70eef4239b4615a4ab88befd6-private.pem.key";
+    private static final String CA_PATH = "C:/Users/User/InternalPlacement/certs/AmazonRootCA1.pem";
 
     private final StorageServiceClient storageServiceClient;
     private final NotificationServiceClient notificationServiceClient;
-    private final AnomalyDetector anomalyDetector;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public SensorDataListener(StorageServiceClient storageServiceClient, NotificationServiceClient notificationServiceClient, AnomalyDetector anomalyDetector) {
+    public SensorDataListener(StorageServiceClient storageServiceClient, NotificationServiceClient notificationServiceClient) {
         this.storageServiceClient = storageServiceClient;
         this.notificationServiceClient = notificationServiceClient;
-        this.anomalyDetector = anomalyDetector;
     }
 
     @PostConstruct
@@ -49,11 +47,9 @@ public class SensorDataListener {
                 System.out.println("Received sensor data: " + payload);
 
                 Map<String, Object> data = objectMapper.readValue(payload, Map.class);
-                double temp = ((Number) data.get("temp")).doubleValue();
-                double humidity = ((Number) data.get("humidity")).doubleValue();
-                double timestamp = ((Number) data.get("timeStamp")).doubleValue();
 
-                boolean anomaly = anomalyDetector.isAnomaly(temp, humidity);
+                // Anomaly flag is pre-computed by Isolation Forest model
+                boolean anomaly = (Boolean)  data.get("anomaly");
 
                 if (anomaly) {
                     System.out.println("Anomaly detected! Sending alert...");
