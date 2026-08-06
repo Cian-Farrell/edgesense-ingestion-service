@@ -15,9 +15,9 @@ public class SensorDataListener {
     private static final String ENDPOINT = "a3ukfj6l4dra4j-ats.iot.eu-west-1.amazonaws.com";
     private static final String CLIENT_ID = "edge-sense-ingestion-service";
     private static final String TOPIC = "edgesense/sensor-data";
-    private static final String CERT_PATH = "C:/Users/User/InternalPlacement/certs/86f52f8b5a613ca70021e08a299db7a2a110aeb70eef4239b4615a4ab88befd6-certificate.pem.crt";
-    private static final String KEY_PATH = "C:/Users/User/InternalPlacement/certs/86f52f8b5a613ca70021e08a299db7a2a110aeb70eef4239b4615a4ab88befd6-private.pem.key";
-    private static final String CA_PATH = "C:/Users/User/InternalPlacement/certs/AmazonRootCA1.pem";
+    private static final String CERT_PATH = "/app/certs/86f52f8b5a613ca70021e08a299db7a2a110aeb70eef4239b4615a4ab88befd6-certificate.pem.crt";
+    private static final String KEY_PATH  = "/app/certs/86f52f8b5a613ca70021e08a299db7a2a110aeb70eef4239b4615a4ab88befd6-private.pem.key";
+    private static final String CA_PATH   = "/app/certs/AmazonRootCA1.pem";
 
     private final StorageServiceClient storageServiceClient;
     private final NotificationServiceClient notificationServiceClient;
