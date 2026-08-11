@@ -75,8 +75,9 @@ public class SensorDataListener {
         if (content == null || content.isBlank()) {
             throw new IllegalStateException("Environment variable for cert '" + prefix + "' is missing or empty");
         }
+        String normalised = content.replace("\r\n", "\n").replace("\r", "\n");
         Path tempFile = Files.createTempFile(prefix, ".pem");
-        Files.writeString(tempFile, content, StandardCharsets.UTF_8);
+        Files.writeString(tempFile, normalised, StandardCharsets.UTF_8);
         tempFile.toFile().deleteOnExit();
         return tempFile;
     }
