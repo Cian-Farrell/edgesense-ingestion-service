@@ -7,7 +7,10 @@ import software.amazon.awssdk.crt.mqtt.MqttClientConnection;
 import software.amazon.awssdk.crt.mqtt.QualityOfService;
 import software.amazon.awssdk.iot.AwsIotMqttConnectionBuilder;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 
 @Component
@@ -15,24 +18,28 @@ public class SensorDataListener {
     private static final String ENDPOINT = "a3ukfj6l4dra4j-ats.iot.eu-west-1.amazonaws.com";
     private static final String CLIENT_ID = "edge-sense-ingestion-service";
     private static final String TOPIC = "edgesense/sensor-data";
-    private static final String CERT_PATH = "C:/Users/User/InternalPlacement/certs/86f52f8b5a613ca70021e08a299db7a2a110aeb70eef4239b4615a4ab88befd6-certificate.pem.crt";
-    private static final String KEY_PATH = "C:/Users/User/InternalPlacement/certs/86f52f8b5a613ca70021e08a299db7a2a110aeb70eef4239b4615a4ab88befd6-private.pem.key";
-    private static final String CA_PATH = "C:/Users/User/InternalPlacement/certs/AmazonRootCA1.pem";
 
     private final StorageServiceClient storageServiceClient;
     private final NotificationServiceClient notificationServiceClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public SensorDataListener(StorageServiceClient storageServiceClient, NotificationServiceClient notificationServiceClient) {
+    public SensorDataListener(StorageServiceClient storageServiceClient,
+                              NotificationServiceClient notificationServiceClient) {
         this.storageServiceClient = storageServiceClient;
         this.notificationServiceClient = notificationServiceClient;
     }
 
     @PostConstruct
-    public void connect() throws Exception{
+    public void connect() throws Exception {
+        // Write cert content from environment variables to temp files
+        // so the AWS IoT SDK can read them from file paths as required
+        Path certPath = writeTempFile("cert", System.getenv("CERT_CONTENT"));
+        Path keyPath  = writeTempFile("key",  System.getenv("KEY_CONTENT"));
+        Path caPath   = writeTempFile("ca",   System.getenv("CA_CONTENT"));
+
         MqttClientConnection connection = AwsIotMqttConnectionBuilder
-                .newMtlsBuilderFromPath(CERT_PATH, KEY_PATH)
-                .withCertificateAuthorityFromPath(null, CA_PATH)
+                .newMtlsBuilderFromPath(certPath.toString(), keyPath.toString())
+                .withCertificateAuthorityFromPath(null, caPath.toString())
                 .withEndpoint(ENDPOINT)
                 .withClientId(CLIENT_ID)
                 .withCleanSession(true)
@@ -47,9 +54,7 @@ public class SensorDataListener {
                 System.out.println("Received sensor data: " + payload);
 
                 Map<String, Object> data = objectMapper.readValue(payload, Map.class);
-
-                // Anomaly flag is pre-computed by Isolation Forest model
-                boolean anomaly = (Boolean)  data.get("anomaly");
+                boolean anomaly = (Boolean) data.get("anomaly");
 
                 if (anomaly) {
                     System.out.println("Anomaly detected! Sending alert...");
@@ -64,5 +69,15 @@ public class SensorDataListener {
         }).get();
 
         System.out.println("Subscribed to topic: " + TOPIC);
+    }
+
+    private Path writeTempFile(String prefix, String content) throws IOException {
+        if (content == null || content.isBlank()) {
+            throw new IllegalStateException("Environment variable for cert '" + prefix + "' is missing or empty");
+        }
+        Path tempFile = Files.createTempFile(prefix, ".pem");
+        Files.writeString(tempFile, content, StandardCharsets.UTF_8);
+        tempFile.toFile().deleteOnExit();
+        return tempFile;
     }
 }
