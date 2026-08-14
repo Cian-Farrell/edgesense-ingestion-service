@@ -10,7 +10,7 @@ import org.springframework.web.client.RestTemplate;
 @Component
 public class StorageServiceClient {
 
-    private static final String STORAGE_SERVICE_URL = "http://localhost:8082/api/readings";
+    private static final String STORAGE_SERVICE_URL = "http://edgesense-storage-nlb-595831d2cf6a0cad.elb.eu-west-1.amazonaws.com:8082/api/readings";
     private final RestTemplate restTemplate;
 
     public StorageServiceClient() {
