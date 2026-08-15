@@ -9,7 +9,7 @@ import org.springframework.web.client.RestTemplate;
 @Component
 public class NotificationServiceClient {
 
-    private static final String NOTIFICATION_SERVICE_URL = "http://172.31.30.53:8083/api/notifications/anomaly";
+    private static final String NOTIFICATION_SERVICE_URL = "http://notification.edgesense.local:8083/api/notifications/anomaly";
     private final RestTemplate restTemplate;
 
     public NotificationServiceClient() {
