@@ -13,7 +13,7 @@ import java.util.concurrent.Executors;
 @Component
 public class NotificationServiceClient {
 
-    private static final String NOTIFICATION_SERVICE_URL = "http://edgesense-notification-nlb-e0c8f18ff1f64df4.elb.eu-west-1.amazonaws.com:8083/api/notifications/anomaly";
+    private static final String NOTIFICATION_SERVICE_URL = "http://notification.edgesense.local:8083/api/notifications/anomaly";
     private final RestTemplate restTemplate;
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "notification-sender");
