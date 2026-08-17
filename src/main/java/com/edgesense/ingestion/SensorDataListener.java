@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.crt.mqtt.MqttClientConnection;
+import software.amazon.awssdk.crt.mqtt.MqttClientConnectionEvents;
 import software.amazon.awssdk.crt.mqtt.QualityOfService;
 import software.amazon.awssdk.iot.AwsIotMqttConnectionBuilder;
 
@@ -22,6 +23,7 @@ public class SensorDataListener {
     private final StorageServiceClient storageServiceClient;
     private final NotificationServiceClient notificationServiceClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private MqttClientConnection connection;
 
     public SensorDataListener(StorageServiceClient storageServiceClient,
                               NotificationServiceClient notificationServiceClient) {
@@ -31,23 +33,42 @@ public class SensorDataListener {
 
     @PostConstruct
     public void connect() throws Exception {
-        // Write cert content from environment variables to temp files
-        // so the AWS IoT SDK can read them from file paths as required
         Path certPath = writeTempFile("cert", System.getenv("CERT_CONTENT"));
         Path keyPath  = writeTempFile("key",  System.getenv("KEY_CONTENT"));
         Path caPath   = writeTempFile("ca",   System.getenv("CA_CONTENT"));
 
-        MqttClientConnection connection = AwsIotMqttConnectionBuilder
+        connection = AwsIotMqttConnectionBuilder
                 .newMtlsBuilderFromPath(certPath.toString(), keyPath.toString())
                 .withCertificateAuthorityFromPath(null, caPath.toString())
                 .withEndpoint(ENDPOINT)
                 .withClientId(CLIENT_ID)
                 .withCleanSession(true)
+                .withConnectionEventCallbacks(new MqttClientConnectionEvents() {
+                    @Override
+                    public void onConnectionInterrupted(int errorCode) {
+                        System.err.println("MQTT connection interrupted, error code: " + errorCode
+                                + " — SDK will attempt to reconnect automatically");
+                    }
+
+                    @Override
+                    public void onConnectionResumed(boolean sessionPresent) {
+                        System.out.println("MQTT connection resumed. Session present: " + sessionPresent);
+                        if (!sessionPresent) {
+                            // Clean session means the broker forgot our subscription — re-subscribe now
+                            System.out.println("No session present after reconnect — re-subscribing to " + TOPIC);
+                            resubscribe();
+                        }
+                    }
+                })
                 .build();
 
         connection.connect().get();
         System.out.println("Connected to AWS IoT Core");
 
+        subscribe();
+    }
+
+    private void subscribe() throws Exception {
         connection.subscribe(TOPIC, QualityOfService.AT_LEAST_ONCE, (message) -> {
             try {
                 String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
@@ -69,6 +90,14 @@ public class SensorDataListener {
         }).get();
 
         System.out.println("Subscribed to topic: " + TOPIC);
+    }
+
+    private void resubscribe() {
+        try {
+            subscribe();
+        } catch (Exception e) {
+            System.err.println("Failed to re-subscribe after reconnect: " + e.getMessage());
+        }
     }
 
     private Path writeTempFile(String prefix, String content) throws IOException {
